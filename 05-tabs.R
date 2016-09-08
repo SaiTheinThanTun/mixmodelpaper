@@ -17,7 +17,13 @@ strong(textOutput("sensdO",inline=T)),
 strong(textOutput("resmuO",inline=T)),
 "and the standard deviation of ",
 strong(textOutput("ressdO",inline=T)),
-"then the distribution will look like the following."
+"then the distribution will look like the following. The proportion of 
+resistant population is",
+strong(textOutput("prop_resistO",inline=T)),
+". The sample size is",
+strong(textOutput("nnO",inline=T)),
+". The cutoff value is ",
+strong(textOutput("cutoffO",inline=T))
                ),
       # plotOutput("norm"),
       # actionButton("renorm", "Resample"),
@@ -124,6 +130,15 @@ server <- function(input, output) {
   output$ressdO <- renderText({
     as.character(input$ressd)
   })
+  output$prop_resistO <- renderText({
+    as.character(input$prop_resist)
+  })
+  output$nnO <- renderText({
+    as.character(input$nn)
+  })
+  output$cutoffO <- renderText({
+    as.character(input$cutoff)
+  })
   
   ####the functions for plotting####
   senmuR <- reactive({log(input$senmu)})
@@ -222,6 +237,147 @@ server <- function(input, output) {
     
     
   })
+  
+  #######################################################################
+  ###For the users data, run the mixture model and draw the histogram####
+  #######################################################################
+  output$histoplot2 <- renderPlot({
+    inFile <- input$file
+    mixdat <- read.csv(inFile$datapath)
+    
+    N<-ncol(mixdat)
+    M <- 5
+    
+    pval<-0.1
+    nboot<-100 # number of iterations for bootstrap
+    nsim<-1000 # number of iterations for creating probaility of resistance vs HL graphs
+    P<-2 # use P or more samples to get geometric means and discard all other samples for permutation analysis
+    T<-100 # number of permutations for permutation analysis
+    smax=5000
+    
+    # create output matrices
+    output.mu <- matrix(NA,nrow=M,ncol=N)
+    output.sigma <- matrix(NA,nrow=M,ncol=N)
+    output.lambda <- matrix(NA,nrow=M,ncol=N)
+    output.loglik <- matrix(NA,nrow=M,ncol=N)
+    output.mu.se <- matrix(NA,nrow=M,ncol=N)
+    output.sigma.se <- matrix(NA,nrow=M,ncol=N)
+    output.lambda.se <- matrix(NA,nrow=M,ncol=N)
+    AIC<-matrix(0,nrow=M,ncol=N)
+    AICdelta<-matrix(0,nrow=M,ncol=N)
+    
+    nb<-na.omit(mixdat[,N])
+    
+    # fit single component model
+    for (i in 1:N){
+      # 1 COMPONENT LOG NORMAL
+      nmixdat<-na.omit(mixdat[,i])
+      lmixdat<- log(nmixdat)
+      xll<-fitdistr(lmixdat,"normal")
+      output.loglik[1,i]<- xll$loglik
+      output.mu[1,i]<-xll$estimate[1]
+      output.lambda[1,i]<-1
+      output.sigma[1,i]<-xll$estimate[2]
+      output.mu.se[1,i]<-xll$sd[1]
+      output.sigma.se[1,i]<-xll$sd[2]
+      output.lambda.se[1,i]<-0
+      AIC[1,i]<-2*(3*1-1)-2*output.loglik[1,i]
+      AICdelta[1,i]<-0
+    }
+    
+    # fit multiple component models sequentially
+    for (i in 1:N){
+      nmixdat<-na.omit(mixdat[,i])
+      lmixdat<- log(nmixdat)
+      # >=2 COMPONENTS LOG NORMAL
+      j<-1
+      # stop if j-component model is more parsimonious than (j-1)-compnent model
+      while((j<=M-1) && AICdelta[j,i]<=pval){
+        j<-j+1
+        res <- normalmixEM(lmixdat, lambda = matrix((1/j),nrow=1,ncol=j), mu = 2*(1:j)/j, sigma = 0.3*matrix(1,nrow=1,ncol=j))
+        resboot <- boot.se(res, B = nboot)
+        resboot[c("lambda.se", "mu.se", "sigma.se","loglik.se")]	
+        output.loglik[j,i]<-res$loglik
+        AIC[j,i]<-2*(3*j-1)-2*output.loglik[j,i]
+        AICdelta[j,i]<-exp(-(AIC[j-1,i]-AIC[j,i])/2)
+        if(AICdelta[j,i]<=pval){
+          output.mu[1:j,i]<-res$mu
+          output.sigma[1:j,i]<-res$sigma
+          output.lambda[1:j,i]<-res$lambda
+          output.mu.se[1:j,i]<-resboot$mu.se
+          output.sigma.se[1:j,i]<-resboot$sigma.se
+          output.lambda.se[1:j,i]<-resboot$lambda.se		
+          
+          
+          
+        }
+        
+      }
+      
+      #Make the table containing the probabilities of each patient belonging to each component distribution. 
+      
+      
+      
+      #Calculate the probabilities of an individual patient, typed into the box by the user, belong to each component distribution.
+      # Print the results. 
+      output$explanation1 <- renderText({"Below are two graphs. The graph on the left
+        represents aggregate data from White et al. 2015. The graph on the right is a graph made from your data."})
+      
+      output$explanation2 <- renderText({"The graph on th left depicts two half life distributions
+        with geometric means SOMETHING AND SOMETHING ELSE respectively. 
+        The distribution with a geometric mean half life of SOMETHING was intepreted
+        as representing patients with parasites sensitive to artemisinin. The distribution
+        with a geometric mean half life of SOMETHING ELSE was interpreted as representing
+        patients with parasites resistant artemisinin. With this information, you may be able
+        to interpret the graph on the rigth, which represents your own data."})
+      
+      output$explanation3 <- renderText({"Below are some statistics from 
+        from the graph representing your data. There is also a list of the probabilities of 
+        each patient belonging to each of the component distributions depicted in the graph."})
+      
+      output$geometric_means_and_proportions <- renderPrint({
+        j <- length(na.omit(output.mu))
+        cat("The model predicts ", j, " component geometric mean half lives (hours):",
+            
+            "\n\n")
+        
+        for (a in 1:j) {
+          cat("Distribution",a,"\n",
+              
+              "Geometric mean = ", exp(output.mu[a]),
+              
+              "\n", 
+              
+              "Contribution to composite distribution = ", output.lambda[a],
+              
+              "\n\n"
+              
+          )       
+        }
+      })
+      
+      
+      
+      }
+    
+    for (ds in 1:N){
+      nmixdat<-na.omit(mixdat[,ds])
+      plam<-na.omit(output.lambda[,ds])
+      pmu<-na.omit(output.mu[,ds])
+      psig<-na.omit(output.sigma[,ds])
+      hist(nmixdat,freq=FALSE,main = paste("Distribution of parasite clearance half lives","\n", "from your data"),xlab = "Clearance half-life (hours)",ylim=c(0,0.6),col="grey",lwd=2,ps=20) #taken out for shiny #,breaks=c(0,1,2,3,4,5,6,7,8,9,10,11,12)
+      x <- seq(0.1, max(nmixdat), length=1000)
+      hx<-plam[1]*dlnorm(x,meanlog=(pmu[1]),sdlog=psig[1])
+      if(length(plam)>1){
+        for(k in 2:length(plam)){
+          hx<-hx+plam[k]*dlnorm(x,meanlog=(pmu[k]),sdlog=psig[k])
+        }
+      }
+      lines(x,hx,col="red", lwd=5)
+    }
+    
+    means <- na.omit(output.mu)
+    spreads <- na.omit(output.sigma)
 }
 
 shinyApp(server = server, ui = ui)
