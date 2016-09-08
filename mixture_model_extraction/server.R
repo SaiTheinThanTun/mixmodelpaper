@@ -135,6 +135,7 @@ shinyServer (
               "Geometric mean = ", exp(output.mu[a]),
               
               "\n", 
+              "SD = ", (output.sigma[a]),
               
               "Contribution to composite distribution = ", output.lambda[a],
               

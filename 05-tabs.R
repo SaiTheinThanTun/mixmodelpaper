@@ -80,7 +80,17 @@ strong(textOutput("cutoffO",inline=T))
         )
       ),
 br(),
-p("This is the end.")
+p("This is the end."),
+
+###test####
+p(textOutput("genDataOut")),
+
+############################
+###Portions from MixModel###
+############################
+
+fileInput(inputId = "file", label = "Select your input file: (simulated_cloneHLdata_SMRUbyyear.csv in this case)"),
+plotOutput(outputId = "histoplot2")
     ),
     tabPanel(title = "Use the Mixture Model",
       plotOutput("unif"),
@@ -141,102 +151,102 @@ server <- function(input, output) {
   })
   
   ####the functions for plotting####
-  senmuR <- reactive({log(input$senmu)})
-  sensdR <- reactive({log(input$sensd)})
-  resmuR <- reactive({log(input$resmu)})
-  ressdR <- reactive({log(input$ressd)})
-  
-  sen_popR <- reactive({rlnorm(input$nn*(1-input$prop_resist),senmuR(),sensdR())})
-  res_popR <- reactive({rlnorm(input$nn*input$prop_resist,resmuR(),ressdR())})
-  
-  
-  genData <- reactive({
-    #nn <- input$nn
-    senmu <- senmuR()
-    sensd <- sensdR()
-    
-    #prop_resist <- input$prop_resist
-    resmu <- resmuR()
-    ressd <- ressdR()
-    
-    sen_pop <- sen_popR() #sensitive population
-    res_pop <- res_popR() #resistant population
-    c(sen_pop,res_pop)
-    #total_pop <- c(sen_pop,res_pop)
-  })
-  
-  genData.DF <- reactive({
-    cbind(genData(),c(rep(0,length(sen_popR())),rep(1,length(res_popR()))))
-  })
-  output$ROC <- renderPlot({
-    popDF <- genData.DF()
-    
-    TPR <- sum(res_popR()>=input$cutoff)/length(res_popR())
-    FPR <- sum(sen_popR()>=input$cutoff)/length(sen_popR())
-    
-    true_res <- sum(res_popR()>=input$cutoff)
-    fal_res <- sum(sen_popR()>=input$cutoff)
-    fal_sen <- sum(res_popR()<input$cutoff)
-    true_sen <- sum(sen_popR()<input$cutoff)
-    overlay <- paste(true_res," truly resistant, ", fal_res, " falsely resistant \n",fal_sen," falsely sensitive, ",true_sen," truly sensitive")
-    
-    
-    roc(popDF[,2], popDF[,1],  partial.auc.correct=TRUE, partial.auc.focus="sens",ci=TRUE, boot.n=100, ci.alpha=0.9, stratified=FALSE, plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE, show.thres=TRUE, main="Receiver Operating Characteristic (ROC) Curve")
-    points((1-FPR),TPR, col="red", pch=19)
-    text(.5,.5,overlay, col="red")
-  })
-  
-  output$densityplot <- renderPlot({
-    popDF2 <- genData.DF() 
-    
-    #mxmdl <- normalmixEM(popDF2)
-    #plot(mxmdl, which=2)
-    popDF2[popDF2[,2]==0,2] <- "Sensitive"
-    popDF2[popDF2[,2]==1,2] <- "Resistant"
-    
-    popDF2 <- as.data.frame(popDF2)
-    popDF2[,1] <- as.numeric(as.character(popDF2[,1]))
-    names(popDF2) <- c("Half-life (hours)","Sensitivity")
-    
-    if(input$bDensity == "Percentage"){
-      if(input$bStacked=="Stacked histogram"){
-        ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
-          geom_histogram(aes(y=(..count..)/sum(..count..)), alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
-          geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Stacked Histogram of Simulated Half-Lives")+
-          theme(plot.title= element_text(face="bold")) +
-          scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
-      }
-      
-      else {
-        ggplot(popDF2, aes(x=`Half-life (hours)`)) + theme_bw() +
-          geom_histogram(aes(y=(..count..)/sum(..count..), fill=Sensitivity, colour= Sensitivity), alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
-          geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Histogram of Simulated Half-Lives")+
-          theme(plot.title= element_text(face="bold")) +
-          scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
-      }
-    }
-    
-    else{
-      if(input$bStacked =="Stacked histogram"){
-        ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
-          geom_histogram(alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
-          geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Stacked Histogram of Simulated Half-Lives")+
-          theme(plot.title= element_text(face="bold")) +
-          scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
-      }
-      
-      else {
-        ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
-          geom_histogram( alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
-          geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Histogram of Simulated Half-Lives")+
-          theme(plot.title= element_text(face="bold")) +
-          scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
-      }
-    }
-    
-    
-    
-  })
+  # senmuR <- reactive({log(input$senmu)})
+  # sensdR <- reactive({log(input$sensd)})
+  # resmuR <- reactive({log(input$resmu)})
+  # ressdR <- reactive({log(input$ressd)})
+  # 
+  # sen_popR <- reactive({rlnorm(input$nn*(1-input$prop_resist),senmuR(),sensdR())})
+  # res_popR <- reactive({rlnorm(input$nn*input$prop_resist,resmuR(),ressdR())})
+  # 
+  # 
+  # genData <- reactive({
+  #   #nn <- input$nn
+  #   senmu <- senmuR()
+  #   sensd <- sensdR()
+  # 
+  #   #prop_resist <- input$prop_resist
+  #   resmu <- resmuR()
+  #   ressd <- ressdR()
+  # 
+  #   sen_pop <- sen_popR() #sensitive population
+  #   res_pop <- res_popR() #resistant population
+  #   c(sen_pop,res_pop)
+  #   #total_pop <- c(sen_pop,res_pop)
+  # })
+  # 
+  # genData.DF <- reactive({
+  #   cbind(genData(),c(rep(0,length(sen_popR())),rep(1,length(res_popR()))))
+  # })
+  # output$ROC <- renderPlot({
+  #   popDF <- genData.DF()
+  # 
+  #   TPR <- sum(res_popR()>=input$cutoff)/length(res_popR())
+  #   FPR <- sum(sen_popR()>=input$cutoff)/length(sen_popR())
+  # 
+  #   true_res <- sum(res_popR()>=input$cutoff)
+  #   fal_res <- sum(sen_popR()>=input$cutoff)
+  #   fal_sen <- sum(res_popR()<input$cutoff)
+  #   true_sen <- sum(sen_popR()<input$cutoff)
+  #   overlay <- paste(true_res," truly resistant, ", fal_res, " falsely resistant \n",fal_sen," falsely sensitive, ",true_sen," truly sensitive")
+  # 
+  # 
+  #   roc(popDF[,2], popDF[,1],  partial.auc.correct=TRUE, partial.auc.focus="sens",ci=TRUE, boot.n=100, ci.alpha=0.9, stratified=FALSE, plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE, show.thres=TRUE, main="Receiver Operating Characteristic (ROC) Curve")
+  #   points((1-FPR),TPR, col="red", pch=19)
+  #   text(.5,.5,overlay, col="red")
+  # })
+  # 
+  # output$densityplot <- renderPlot({
+  #   popDF2 <- genData.DF()
+  # 
+  #   #mxmdl <- normalmixEM(popDF2)
+  #   #plot(mxmdl, which=2)
+  #   popDF2[popDF2[,2]==0,2] <- "Sensitive"
+  #   popDF2[popDF2[,2]==1,2] <- "Resistant"
+  # 
+  #   popDF2 <- as.data.frame(popDF2)
+  #   popDF2[,1] <- as.numeric(as.character(popDF2[,1]))
+  #   names(popDF2) <- c("Half-life (hours)","Sensitivity")
+  # 
+  #   if(input$bDensity == "Percentage"){
+  #     if(input$bStacked=="Stacked histogram"){
+  #       ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+  #         geom_histogram(aes(y=(..count..)/sum(..count..)), alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+  #         geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Stacked Histogram of Simulated Half-Lives")+
+  #         theme(plot.title= element_text(face="bold")) +
+  #         scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+  #     }
+  # 
+  #     else {
+  #       ggplot(popDF2, aes(x=`Half-life (hours)`)) + theme_bw() +
+  #         geom_histogram(aes(y=(..count..)/sum(..count..), fill=Sensitivity, colour= Sensitivity), alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+  #         geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Histogram of Simulated Half-Lives")+
+  #         theme(plot.title= element_text(face="bold")) +
+  #         scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+  #     }
+  #   }
+  # 
+  #   else{
+  #     if(input$bStacked =="Stacked histogram"){
+  #       ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+  #         geom_histogram(alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+  #         geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Stacked Histogram of Simulated Half-Lives")+
+  #         theme(plot.title= element_text(face="bold")) +
+  #         scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+  #     }
+  # 
+  #     else {
+  #       ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+  #         geom_histogram( alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+  #         geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Histogram of Simulated Half-Lives")+
+  #         theme(plot.title= element_text(face="bold")) +
+  #         scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+  #     }
+  #   }
+  # 
+  # 
+  # 
+  # })
   
   #######################################################################
   ###For the users data, run the mixture model and draw the histogram####
@@ -307,11 +317,7 @@ server <- function(input, output) {
           output.mu.se[1:j,i]<-resboot$mu.se
           output.sigma.se[1:j,i]<-resboot$sigma.se
           output.lambda.se[1:j,i]<-resboot$lambda.se		
-          
-          
-          
         }
-        
       }
       
       #Make the table containing the probabilities of each patient belonging to each component distribution. 
@@ -376,8 +382,120 @@ server <- function(input, output) {
       lines(x,hx,col="red", lwd=5)
     }
     
-    means <- na.omit(output.mu)
-    spreads <- na.omit(output.sigma)
+    means <- reactive(na.omit(output.mu))
+    spreads <- reactive(na.omit(output.sigma))
+    proportions <- reactive(na.omit(output.lambda))
+    nn.mixdat <- reactive(length(nb))#(nrow(mixdat))
+    
+    #################################
+    ####plots from the cutoff app####
+    ####the functions for plotting###
+    #################################
+    
+    senmuR <- reactive(means()[1])
+    sensdR <- reactive(spreads()[1])    
+    resmuR <- reactive(means()[2])
+    ressdR <- reactive(spreads()[2])
+
+    ###test####
+    output$genDataOut <- renderPrint({as.character(c(nn.mixdat(),proportions(),senmuR(),sensdR()))})
+
+    sen_popR <- reactive({rlnorm(nn.mixdat()*(1-proportions()[2]),senmuR(),sensdR())})
+    res_popR <- reactive({rlnorm(nn.mixdat()*proportions()[2],resmuR(),ressdR())})
+
+
+    genData <- reactive({
+      #nn <- input$nn
+      senmu <- senmuR()
+      sensd <- sensdR()
+
+      #prop_resist <- input$prop_resist
+      resmu <- resmuR()
+      ressd <- ressdR()
+
+      sen_pop <- sen_popR() #sensitive population
+      res_pop <- res_popR() #resistant population
+      c(sen_pop,res_pop)
+      #total_pop <- c(sen_pop,res_pop)
+    })
+
+
+
+    genData.DF <- reactive({
+      cbind(genData(),c(rep(0,length(sen_popR())),rep(1,length(res_popR()))))
+    })
+    output$ROC <- renderPlot({
+      popDF <- genData.DF()
+
+      TPR <- sum(res_popR()>=input$cutoff)/length(res_popR())
+      FPR <- sum(sen_popR()>=input$cutoff)/length(sen_popR())
+
+      true_res <- sum(res_popR()>=input$cutoff)
+      fal_res <- sum(sen_popR()>=input$cutoff)
+      fal_sen <- sum(res_popR()<input$cutoff)
+      true_sen <- sum(sen_popR()<input$cutoff)
+      overlay <- paste(true_res," truly resistant, ", fal_res, " falsely resistant \n",fal_sen," falsely sensitive, ",true_sen," truly sensitive")
+
+
+      roc(popDF[,2], popDF[,1],  partial.auc.correct=TRUE, partial.auc.focus="sens",ci=TRUE, boot.n=100, ci.alpha=0.9, stratified=FALSE, plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE, show.thres=TRUE, main="Receiver Operating Characteristic (ROC) Curve")
+      points((1-FPR),TPR, col="red", pch=19)
+      text(.5,.5,overlay, col="red")
+    })
+
+    output$densityplot <- renderPlot({
+      popDF2 <- genData.DF()
+
+      #mxmdl <- normalmixEM(popDF2)
+      #plot(mxmdl, which=2)
+      popDF2[popDF2[,2]==0,2] <- "Sensitive"
+      popDF2[popDF2[,2]==1,2] <- "Resistant"
+
+      popDF2 <- as.data.frame(popDF2)
+      popDF2[,1] <- as.numeric(as.character(popDF2[,1]))
+      names(popDF2) <- c("Half-life (hours)","Sensitivity")
+
+      if(input$bDensity == "Percentage"){
+        if(input$bStacked=="Stacked histogram"){
+          ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+            geom_histogram(aes(y=(..count..)/sum(..count..)), alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+            geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Stacked Histogram of Simulated Half-Lives")+
+            theme(plot.title= element_text(face="bold")) +
+            scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+        }
+
+        else {
+          ggplot(popDF2, aes(x=`Half-life (hours)`)) + theme_bw() +
+            geom_histogram(aes(y=(..count..)/sum(..count..), fill=Sensitivity, colour= Sensitivity), alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+            geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Histogram of Simulated Half-Lives")+
+            theme(plot.title= element_text(face="bold")) +
+            scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+        }
+      }
+
+      else{
+        if(input$bStacked =="Stacked histogram"){
+          ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+            geom_histogram(alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+            geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Stacked Histogram of Simulated Half-Lives")+
+            theme(plot.title= element_text(face="bold")) +
+            scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+        }
+
+        else {
+          ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+            geom_histogram( alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+            geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Histogram of Simulated Half-Lives")+
+            theme(plot.title= element_text(face="bold")) +
+            scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+        }
+      }
+
+
+
+    })
+    
+    
+  })
 }
 
 shinyApp(server = server, ui = ui)
