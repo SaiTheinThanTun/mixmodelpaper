@@ -7,13 +7,20 @@ ui <- fluidPage(
   #title = "Random generator",
   tabsetPanel(              
     tabPanel(title = "Introduction",
-             p("This is a paragraph and I would like show the shiny input together with the output text
-               like this: ", code(textOutput(outputId= "value", inline=TRUE)), "the value of which will change 
-               according to the input value below. What do you thinK?"
+             p("Assuming that the parasite clearance half-lives are in log-normal distribution, and that the values for 
+sensitive and resistant populations each assume unimodal distribution. When the sensitive population has 
+a geomatric half-life mean of : ", 
+strong(textOutput("senmuO", inline=TRUE)), 
+"and the standard deviation of ",
+strong(textOutput("sensdO",inline=T)),
+"and the resistant population has a geomatric half-life mean of : ",
+strong(textOutput("resmuO",inline=T)),
+"and the standard deviation of ",
+strong(textOutput("ressdO",inline=T)),
+"then the distribution will look like the following."
                ),
-      plotOutput("norm"),
-      actionButton("renorm", "Resample"),
-      numericInput(inputId = "bb", label= "change here to change the value in the text", value= 500),
+      # plotOutput("norm"),
+      # actionButton("renorm", "Resample"),
       fluidRow(
         column(5,
                plotOutput(outputId = "densityplot")
@@ -108,8 +115,19 @@ server <- function(input, output) {
     hist(rv$chisq, breaks = 30, col = "grey", border = "white",
        main = "500 random draws from a Chi Square distribution with two degree of freedom")
   })
-  output$value <- renderText({
-    as.character(input$bb)
+
+#having the parameters reflect on the text description
+  output$senmuO <- renderText({
+    as.character(input$senmu)
+  })
+  output$sensdO <- renderText({
+    as.character(input$sensd)
+  })
+  output$resmuO <- renderText({
+    as.character(input$resmu)
+  })
+  output$ressdO <- renderText({
+    as.character(input$ressd)
   })
 }
 
