@@ -373,13 +373,24 @@ server <- function(input, output) {
       psig<-na.omit(output.sigma[,ds])
       hist(nmixdat,freq=FALSE,main = paste("Distribution of parasite clearance half lives","\n", "from your data"),xlab = "Clearance half-life (hours)",ylim=c(0,0.6),col="grey",lwd=2,ps=20) #taken out for shiny #,breaks=c(0,1,2,3,4,5,6,7,8,9,10,11,12)
       x <- seq(0.1, max(nmixdat), length=1000)
-      hx<-plam[1]*dlnorm(x,meanlog=(pmu[1]),sdlog=psig[1])
-      if(length(plam)>1){
-        for(k in 2:length(plam)){
-          hx<-hx+plam[k]*dlnorm(x,meanlog=(pmu[k]),sdlog=psig[k])
-        }
+      #hx<-plam[1]*dlnorm(x,meanlog=(pmu[1]),sdlog=psig[1])
+      hx <- list()
+      
+      #casting multiple lines for different distributions
+      lcolor <- c('blue','red','brown','green','yellow')
+      for(k in 1:length(pmu)){
+        hx[[k]]<-plam[k]*dlnorm(x,meanlog=(pmu[k]),sdlog=psig[k])
+        lines(x,hx[[k]],col=lcolor[k], lwd=5)
       }
-      lines(x,hx,col="red", lwd=5)
+    
+    
+      
+      # if(length(plam)>1){
+      #   for(k in 2:length(plam)){
+      #     hx<-hx+plam[k]*dlnorm(x,meanlog=(pmu[k]),sdlog=psig[k])
+      #   }
+      # }
+      # lines(x,hx,col="red", lwd=5)
     }
     
     means <- reactive(na.omit(output.mu))
@@ -399,6 +410,9 @@ server <- function(input, output) {
 
     ###test####
     output$genDataOut <- renderPrint({as.character(c(nn.mixdat(),proportions(),senmuR(),sensdR()))})
+    output$densityLine <- renderPlot({
+      
+    })
 
     sen_popR <- reactive({rlnorm(nn.mixdat()*(1-proportions()[2]),senmuR(),sensdR())})
     res_popR <- reactive({rlnorm(nn.mixdat()*proportions()[2],resmuR(),ressdR())})
