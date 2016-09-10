@@ -83,6 +83,7 @@ br(),
 p("This is the end."),
 
 ###test####
+#p(textOutput("genDataOut")),
 p(textOutput("genDataOut")),
 
 ############################
@@ -245,9 +246,13 @@ server <- function(input, output) {
   #######################################################################
   ###For the users data, run the mixture model and draw the histogram####
   #######################################################################
-  output$histoplot2 <- renderPlot({
+  mixdatR <- reactive({
     inFile <- input$file
-    mixdat <- read.csv(inFile$datapath)
+    read.csv(inFile$datapath)
+  })
+  
+  MixModel <- reactive({
+    mixdat <- mixdatR()
     
     N<-ncol(mixdat)
     M <- 5
@@ -313,187 +318,206 @@ server <- function(input, output) {
           output.lambda.se[1:j,i]<-resboot$lambda.se		
         }
       }
+    }
+      list(muR = na.omit(output.mu), sigmaR = na.omit(output.sigma), lambdaR = na.omit(output.lambda))
+      # muR <- na.omit(output.mu)
+      # sigmaR <- na.omit(output.sigma)
+      # lambdaR <- na.omit(output.lambda)
       
+      #list(muR, sigmaR, lambdaR)
       #Make the table containing the probabilities of each patient belonging to each component distribution. 
-      
-      
-      
-      #Calculate the probabilities of an individual patient, typed into the box by the user, belong to each component distribution.
-      # Print the results. 
-      output$explanation1 <- renderText({"Below are two graphs. The graph on the left
-        represents aggregate data from White et al. 2015. The graph on the right is a graph made from your data."})
-      
-      output$explanation2 <- renderText({"The graph on th left depicts two half life distributions
-        with geometric means SOMETHING AND SOMETHING ELSE respectively. 
-        The distribution with a geometric mean half life of SOMETHING was intepreted
-        as representing patients with parasites sensitive to artemisinin. The distribution
-        with a geometric mean half life of SOMETHING ELSE was interpreted as representing
-        patients with parasites resistant artemisinin. With this information, you may be able
-        to interpret the graph on the rigth, which represents your own data."})
-      
-      output$explanation3 <- renderText({"Below are some statistics from 
-        from the graph representing your data. There is also a list of the probabilities of 
-        each patient belonging to each of the component distributions depicted in the graph."})
-      
-      output$geometric_means_and_proportions <- renderPrint({
-        j <- length(na.omit(output.mu))
-        cat("The model predicts ", j, " component geometric mean half lives (hours):",
-            
-            "\n\n")
+    
+  })
+  
+  ############################################################
+  ###Following has been put out of the previous renderPlot####
+  ############################################################
+  
+  #Calculate the probabilities of an individual patient, typed into the box by the user, belong to each component distribution.
+  # Print the results. 
+  output$explanation1 <- renderText({"Below are two graphs. The graph on the left
+    represents aggregate data from White et al. 2015. The graph on the right is a graph made from your data."})
+  
+  output$explanation2 <- renderText({"The graph on th left depicts two half life distributions
+    with geometric means SOMETHING AND SOMETHING ELSE respectively. 
+    The distribution with a geometric mean half life of SOMETHING was intepreted
+    as representing patients with parasites sensitive to artemisinin. The distribution
+    with a geometric mean half life of SOMETHING ELSE was interpreted as representing
+    patients with parasites resistant artemisinin. With this information, you may be able
+    to interpret the graph on the rigth, which represents your own data."})
+  
+  output$explanation3 <- renderText({"Below are some statistics from 
+    from the graph representing your data. There is also a list of the probabilities of 
+    each patient belonging to each of the component distributions depicted in the graph."})
+  
+  output$geometric_means_and_proportions <- renderPrint({
+    mm <- MixModel()
+    j <- length(mm$muR)
+    cat("The model predicts ", j, " component geometric mean half lives (hours):",
         
-        for (a in 1:j) {
-          cat("Distribution",a,"\n",
-              
-              "Geometric mean = ", exp(output.mu[a]),
-              
-              "\n", 
-              
-              "Contribution to composite distribution = ", output.lambda[a],
-              
-              "\n\n"
-              
-          )       
-        }
-      })
-      
-      
-      
+        "\n\n")
+    
+    for (a in 1:j) {
+      cat("Distribution",a,"\n",
+          
+          "Geometric mean = ", exp(mm$muR[a]),
+          
+          
+          "\n", 
+          "SD = ", (mm$sigmaR[a]),
+          
+          "Contribution to composite distribution = ", mm$lambdaR[a],
+          
+          "\n\n"
+          
+      )       
+    }
+  })
+  
+  
+  
+  
+  
+  output$histoplot2 <- renderPlot({
+    mixdat <- mixdatR()
+    mm <- MixModel()
+  #N<-ncol(mixdat)
+  #for (ds in 1:N){
+    nmixdat<-na.omit(mixdat[,1])
+    
+    
+    
+    plam<-mm$lambdaR
+    pmu<-mm$muR
+    psig<-mm$sigmaR
+    hist(nmixdat,freq=FALSE,main = paste("Distribution of parasite clearance half lives","\n", "from your data"),xlab = "Clearance half-life (hours)",ylim=c(0,0.6),col="grey",lwd=2,ps=20) #taken out for shiny #,breaks=c(0,1,2,3,4,5,6,7,8,9,10,11,12)
+    x <- seq(0.1, max(nmixdat), length=1000)
+    #hx<-plam[1]*dlnorm(x,meanlog=(pmu[1]),sdlog=psig[1])
+    hx <- list()
+    
+    #casting multiple lines for different distributions
+    lcolor <- c('blue','red','brown','green','yellow')
+    for(k in 1:length(pmu)){
+      hx[[k]]<-plam[k]*dlnorm(x,meanlog=(pmu[k]),sdlog=psig[k])
+      lines(x,hx[[k]],col=lcolor[k], lwd=5)
+    }
+  })
+    
+    
+    # if(length(plam)>1){
+    #   for(k in 2:length(plam)){
+    #     hx<-hx+plam[k]*dlnorm(x,meanlog=(pmu[k]),sdlog=psig[k])
+    #   }
+    # }
+    # lines(x,hx,col="red", lwd=5)
+  
+  
+  # means <- reactive(na.omit(output.mu))
+  # spreads <- reactive(na.omit(output.sigma))
+  # proportions <- reactive(na.omit(output.lambda))
+  # nn.mixdat <- reactive(length(nb))#(nrow(mixdat))
+  proportions <- reactive({MixModel()$lambdaR})
+  nn.mixdat <- reactive({nrow(mixdatR())})
+  #################################
+  ####plots from the cutoff app####
+  ####the functions for plotting###
+  #################################
+  
+  senmuR <- reactive({MixModel()$muR[1]})
+  sensdR <- reactive({MixModel()$sigmaR[1]})    
+  resmuR <- reactive({MixModel()$muR[2]})
+  ressdR <- reactive({MixModel()$sigmaR[2]})
+  
+  ###test####
+  #output$genDataOut <- renderPrint({as.character(c(nn.mixdat(),MixModel()$muR,proportions(),senmuR(),sensdR()))})
+  output$genDataOut <- renderPrint({class(na.omit(mixdatR()))})
+  # output$densityLine <- renderPlot({
+  #   
+  # })
+  
+  sen_popR <- reactive({rlnorm(nn.mixdat()*(1-proportions()[2]),senmuR(),sensdR())})
+  res_popR <- reactive({rlnorm(nn.mixdat()*proportions()[2],resmuR(),ressdR())})
+  
+  
+  genData <- reactive({
+    
+    sen_pop <- sen_popR() #sensitive population
+    res_pop <- res_popR() #resistant population
+    c(sen_pop,res_pop)
+    #total_pop <- c(sen_pop,res_pop)
+  })
+  
+  
+  
+  genData.DF <- reactive({
+    cbind(genData(),c(rep(0,length(sen_popR())),rep(1,length(res_popR()))))
+  })
+  output$ROC <- renderPlot({
+    popDF <- genData.DF()
+    
+    TPR <- sum(res_popR()>=input$cutoff)/length(res_popR())
+    FPR <- sum(sen_popR()>=input$cutoff)/length(sen_popR())
+    
+    true_res <- sum(res_popR()>=input$cutoff)
+    fal_res <- sum(sen_popR()>=input$cutoff)
+    fal_sen <- sum(res_popR()<input$cutoff)
+    true_sen <- sum(sen_popR()<input$cutoff)
+    overlay <- paste(true_res," truly resistant, ", fal_res, " falsely resistant \n",fal_sen," falsely sensitive, ",true_sen," truly sensitive")
+    
+    
+    roc(popDF[,2], popDF[,1],  partial.auc.correct=TRUE, partial.auc.focus="sens",ci=TRUE, boot.n=100, ci.alpha=0.9, stratified=FALSE, plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE, show.thres=TRUE, main="Receiver Operating Characteristic (ROC) Curve")
+    points((1-FPR),TPR, col="red", pch=19)
+    text(.5,.5,overlay, col="red")
+  })
+  
+  output$densityplot <- renderPlot({
+    popDF2 <- genData.DF()
+    
+    #mxmdl <- normalmixEM(popDF2)
+    #plot(mxmdl, which=2)
+    popDF2[popDF2[,2]==0,2] <- "Sensitive"
+    popDF2[popDF2[,2]==1,2] <- "Resistant"
+    
+    popDF2 <- as.data.frame(popDF2)
+    popDF2[,1] <- as.numeric(as.character(popDF2[,1]))
+    names(popDF2) <- c("Half-life (hours)","Sensitivity")
+    
+    if(input$bDensity == "Percentage"){
+      if(input$bStacked=="Stacked histogram"){
+        ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+          geom_histogram(aes(y=(..count..)/sum(..count..)), alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+          geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Stacked Histogram of Simulated Half-Lives")+
+          theme(plot.title= element_text(face="bold")) +
+          scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
       }
-    
-    for (ds in 1:N){
-      nmixdat<-na.omit(mixdat[,ds])
-      plam<-na.omit(output.lambda[,ds])
-      pmu<-na.omit(output.mu[,ds])
-      psig<-na.omit(output.sigma[,ds])
-      hist(nmixdat,freq=FALSE,main = paste("Distribution of parasite clearance half lives","\n", "from your data"),xlab = "Clearance half-life (hours)",ylim=c(0,0.6),col="grey",lwd=2,ps=20) #taken out for shiny #,breaks=c(0,1,2,3,4,5,6,7,8,9,10,11,12)
-      x <- seq(0.1, max(nmixdat), length=1000)
-      #hx<-plam[1]*dlnorm(x,meanlog=(pmu[1]),sdlog=psig[1])
-      hx <- list()
       
-      #casting multiple lines for different distributions
-      lcolor <- c('blue','red','brown','green','yellow')
-      for(k in 1:length(pmu)){
-        hx[[k]]<-plam[k]*dlnorm(x,meanlog=(pmu[k]),sdlog=psig[k])
-        lines(x,hx[[k]],col=lcolor[k], lwd=5)
+      else {
+        ggplot(popDF2, aes(x=`Half-life (hours)`)) + theme_bw() +
+          geom_histogram(aes(y=(..count..)/sum(..count..), fill=Sensitivity, colour= Sensitivity), alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+          geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Histogram of Simulated Half-Lives")+
+          theme(plot.title= element_text(face="bold")) +
+          scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
       }
-    
-    
-      
-      # if(length(plam)>1){
-      #   for(k in 2:length(plam)){
-      #     hx<-hx+plam[k]*dlnorm(x,meanlog=(pmu[k]),sdlog=psig[k])
-      #   }
-      # }
-      # lines(x,hx,col="red", lwd=5)
     }
     
-    means <- reactive(na.omit(output.mu))
-    spreads <- reactive(na.omit(output.sigma))
-    proportions <- reactive(na.omit(output.lambda))
-    nn.mixdat <- reactive(length(nb))#(nrow(mixdat))
-    
-    #################################
-    ####plots from the cutoff app####
-    ####the functions for plotting###
-    #################################
-    
-    senmuR <- reactive(means()[1])
-    sensdR <- reactive(spreads()[1])    
-    resmuR <- reactive(means()[2])
-    ressdR <- reactive(spreads()[2])
-
-    ###test####
-    output$genDataOut <- renderPrint({as.character(c(nn.mixdat(),proportions(),senmuR(),sensdR()))})
-    output$densityLine <- renderPlot({
+    else{
+      if(input$bStacked =="Stacked histogram"){
+        ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+          geom_histogram(alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+          geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Stacked Histogram of Simulated Half-Lives")+
+          theme(plot.title= element_text(face="bold")) +
+          scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
+      }
       
-    })
-
-    sen_popR <- reactive({rlnorm(nn.mixdat()*(1-proportions()[2]),senmuR(),sensdR())})
-    res_popR <- reactive({rlnorm(nn.mixdat()*proportions()[2],resmuR(),ressdR())})
-
-
-    genData <- reactive({
-
-      sen_pop <- sen_popR() #sensitive population
-      res_pop <- res_popR() #resistant population
-      c(sen_pop,res_pop)
-      #total_pop <- c(sen_pop,res_pop)
-    })
-
-
-
-    genData.DF <- reactive({
-      cbind(genData(),c(rep(0,length(sen_popR())),rep(1,length(res_popR()))))
-    })
-    output$ROC <- renderPlot({
-      popDF <- genData.DF()
-
-      TPR <- sum(res_popR()>=input$cutoff)/length(res_popR())
-      FPR <- sum(sen_popR()>=input$cutoff)/length(sen_popR())
-
-      true_res <- sum(res_popR()>=input$cutoff)
-      fal_res <- sum(sen_popR()>=input$cutoff)
-      fal_sen <- sum(res_popR()<input$cutoff)
-      true_sen <- sum(sen_popR()<input$cutoff)
-      overlay <- paste(true_res," truly resistant, ", fal_res, " falsely resistant \n",fal_sen," falsely sensitive, ",true_sen," truly sensitive")
-
-
-      roc(popDF[,2], popDF[,1],  partial.auc.correct=TRUE, partial.auc.focus="sens",ci=TRUE, boot.n=100, ci.alpha=0.9, stratified=FALSE, plot=TRUE, auc.polygon=TRUE, max.auc.polygon=TRUE, grid=TRUE, show.thres=TRUE, main="Receiver Operating Characteristic (ROC) Curve")
-      points((1-FPR),TPR, col="red", pch=19)
-      text(.5,.5,overlay, col="red")
-    })
-
-    output$densityplot <- renderPlot({
-      popDF2 <- genData.DF()
-
-      #mxmdl <- normalmixEM(popDF2)
-      #plot(mxmdl, which=2)
-      popDF2[popDF2[,2]==0,2] <- "Sensitive"
-      popDF2[popDF2[,2]==1,2] <- "Resistant"
-
-      popDF2 <- as.data.frame(popDF2)
-      popDF2[,1] <- as.numeric(as.character(popDF2[,1]))
-      names(popDF2) <- c("Half-life (hours)","Sensitivity")
-
-      if(input$bDensity == "Percentage"){
-        if(input$bStacked=="Stacked histogram"){
-          ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
-            geom_histogram(aes(y=(..count..)/sum(..count..)), alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
-            geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Stacked Histogram of Simulated Half-Lives")+
-            theme(plot.title= element_text(face="bold")) +
-            scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
-        }
-
-        else {
-          ggplot(popDF2, aes(x=`Half-life (hours)`)) + theme_bw() +
-            geom_histogram(aes(y=(..count..)/sum(..count..), fill=Sensitivity, colour= Sensitivity), alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
-            geom_vline(xintercept= input$cutoff, colour="red", size=1) + ylab("Percent") + ggtitle("Histogram of Simulated Half-Lives")+
-            theme(plot.title= element_text(face="bold")) +
-            scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
-        }
+      else {
+        ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
+          geom_histogram( alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
+          geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Histogram of Simulated Half-Lives")+
+          theme(plot.title= element_text(face="bold")) +
+          scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
       }
-
-      else{
-        if(input$bStacked =="Stacked histogram"){
-          ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
-            geom_histogram(alpha=.8, position="stack",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
-            geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Stacked Histogram of Simulated Half-Lives")+
-            theme(plot.title= element_text(face="bold")) +
-            scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
-        }
-
-        else {
-          ggplot(popDF2, aes(x=`Half-life (hours)`, fill=Sensitivity, colour= Sensitivity)) + theme_bw() +
-            geom_histogram( alpha=.4, position="identity",breaks=as.numeric(floor(min(genData())):ceiling(max(genData())))) +
-            geom_vline(xintercept= input$cutoff, colour="red", size=1) + ggtitle("Histogram of Simulated Half-Lives")+
-            theme(plot.title= element_text(face="bold")) +
-            scale_x_continuous(breaks=as.numeric(floor(min(genData())):ceiling(max(genData()))))
-        }
-      }
-
-
-
-    })
+    }
+    
     
     
   })
