@@ -161,13 +161,7 @@ server <- function(input, output) {
   # 
   # 
   # genData <- reactive({
-  #   #nn <- input$nn
-  #   senmu <- senmuR()
-  #   sensd <- sensdR()
-  # 
-  #   #prop_resist <- input$prop_resist
-  #   resmu <- resmuR()
-  #   ressd <- ressdR()
+
   # 
   #   sen_pop <- sen_popR() #sensitive population
   #   res_pop <- res_popR() #resistant population
@@ -419,13 +413,6 @@ server <- function(input, output) {
 
 
     genData <- reactive({
-      #nn <- input$nn
-      senmu <- senmuR()
-      sensd <- sensdR()
-
-      #prop_resist <- input$prop_resist
-      resmu <- resmuR()
-      ressd <- ressdR()
 
       sen_pop <- sen_popR() #sensitive population
       res_pop <- res_popR() #resistant population

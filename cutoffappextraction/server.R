@@ -16,7 +16,7 @@ function(input, output) {
     #nn <- input$nn
     senmu <- senmuR()
     sensd <- sensdR()
-    
+
     #prop_resist <- input$prop_resist
     resmu <- resmuR()
     ressd <- ressdR()
